@@ -252,8 +252,8 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
         }),
       });
 
-      if (!res.ok) throw new Error("chat");
       const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "chat");
 
       const assistantMsg: ChatMessage = {
         id: nextId(),
@@ -263,10 +263,11 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
         macros: data.macros,
       };
       setChatMessages((prev) => [...prev, assistantMsg]);
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong — please try again.";
       setChatMessages((prev) => [
         ...prev,
-        { id: nextId(), role: "assistant", content: "Sorry, something went wrong — please try again.", rawContent: "{}" },
+        { id: nextId(), role: "assistant", content: msg, rawContent: "{}" },
       ]);
     } finally {
       setChatLoading(false);

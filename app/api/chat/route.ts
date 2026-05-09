@@ -60,6 +60,10 @@ Always return valid JSON. Never include markdown outside the JSON.`,
     }
   } catch (err) {
     console.error("Chat API error:", err);
-    return NextResponse.json({ error: "Failed to get response" }, { status: 500 });
+    const apiMessage =
+      err instanceof Error &&
+      (err as Error & { error?: { error?: { message?: string } } }).error?.error?.message;
+    const userMessage = apiMessage ?? (err instanceof Error ? err.message : "Failed to get response");
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
