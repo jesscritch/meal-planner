@@ -104,7 +104,7 @@ export default function RecipeModal({ meal, onAddToGrocery, onChangeMeal, onClos
 
           {error && !loading && (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <p className="text-sm text-gray-500">Couldn't load recipe — try again.</p>
+              <p className="text-sm text-gray-500">Couldn&apos;t load recipe — try again.</p>
               <button
                 onClick={() => {
                   setError(false);
