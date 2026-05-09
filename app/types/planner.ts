@@ -16,3 +16,27 @@ export interface ActiveCell {
   day: number;
   type: MealType;
 }
+
+export interface FoodLogEntry {
+  id: string;
+  timestamp: number;
+  transcript: string;
+  summary: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  notes: string;
+}
+
+export interface MealSuggestion {
+  meal: string;
+  calories: number;
+  protein: number;
+  reason: string;
+}
+
+export interface SuggestionsResult {
+  remaining: { calories: number; protein: number };
+  suggestions: MealSuggestion[];
+}

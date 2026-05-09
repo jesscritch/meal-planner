@@ -5,12 +5,14 @@ import Link from "next/link";
 import { useMealPlan, pickReplacementMeal } from "@/app/hooks/useMealPlan";
 import { usePreferences } from "@/app/hooks/usePreferences";
 import { useRatings } from "@/app/hooks/useRatings";
-import { DAYS, FULL_DAYS, MEAL_TYPES, MEAL_TYPE_LABELS, ActiveCell } from "@/app/types/planner";
+import { useFoodLog } from "@/app/hooks/useFoodLog";
+import { DAYS, FULL_DAYS, MEAL_TYPES, MEAL_TYPE_LABELS, ActiveCell, MealSuggestion } from "@/app/types/planner";
 import { Meal, MealType } from "@/app/data/meals";
 import MealCell from "@/app/components/MealCell";
 import MealModal from "@/app/components/MealModal";
 import RecipeModal from "@/app/components/RecipeModal";
 import GroceryModal from "@/app/components/GroceryModal";
+import FoodLogPanel from "@/app/components/FoodLogPanel";
 import StatsBar from "@/app/components/StatsBar";
 import AllergyFilter from "@/app/components/AllergyFilter";
 
@@ -25,14 +27,21 @@ function SettingsIcon() {
 type CellKey = string; // `${type}-${day}`
 const cellKey = (type: MealType, day: number): CellKey => `${type}-${day}`;
 
+// Maps JS getDay() (0=Sun) to our Mon-first index (0=Mon)
+function todayDayIndex() {
+  return (new Date().getDay() + 6) % 7;
+}
+
 export default function Page() {
   const { grid, hydrated, activeAllergens, toggleAllergen, setMeal, autoFill, clearAll, addToGrocery, stats, groceryList } = useMealPlan();
   const { likedFoods, avoidedFoods } = usePreferences();
   const { likedMealIds, dislikedMealIds, lockedSlots, likeMeal, dislikeMeal, lockSlot, unlockSlot, clearLocks } = useRatings();
+  const { entries: logEntries, addEntry: addLogEntry, totals: logTotals, goals: logGoals } = useFoodLog();
 
   const [activeCell, setActiveCell] = useState<ActiveCell | null>(null);
   const [detailCell, setDetailCell] = useState<ActiveCell | null>(null);
   const [showGrocery, setShowGrocery] = useState(false);
+  const [showFoodLog, setShowFoodLog] = useState(false);
   const [selectedDay, setSelectedDay] = useState(0);
   const [fadingCells, setFadingCells] = useState<Set<CellKey>>(new Set());
   const [noOptionsCells, setNoOptionsCells] = useState<Set<CellKey>>(new Set());
@@ -89,6 +98,31 @@ export default function Page() {
     clearAll();
     clearLocks();
     setNoOptionsCells(new Set());
+  }
+
+  function handleAddToMealPlan(suggestion: MealSuggestion) {
+    const day = todayDayIndex();
+    // Find the first empty slot today, preferring time-appropriate type
+    const hour = new Date().getHours();
+    const preferredOrder: MealType[] =
+      hour < 12 ? ["breakfast", "lunch", "dinner"]
+      : hour < 17 ? ["lunch", "dinner", "breakfast"]
+      : ["dinner", "lunch", "breakfast"];
+
+    const targetType = preferredOrder.find((t) => !grid[t][day]) ?? null;
+    if (!targetType) return; // all slots taken today
+
+    const syntheticMeal: Meal = {
+      id: `suggested-${Date.now()}`,
+      name: suggestion.meal,
+      type: targetType,
+      calories: suggestion.calories,
+      protein: suggestion.protein,
+      ingredients: [],
+      keywords: [],
+      allergens: [],
+    };
+    setMeal(targetType, day, syntheticMeal);
   }
 
   function renderCell(type: MealType, day: number) {
@@ -240,6 +274,18 @@ export default function Page() {
         <p className="text-xs text-gray-300 text-center mt-6">Plan auto-saved to local storage</p>
       </div>
 
+      {/* Floating voice log button */}
+      <button
+        onClick={() => setShowFoodLog(true)}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-gray-900 hover:bg-gray-700 text-white rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-105 z-40"
+        aria-label="Open food log"
+        title="Voice food log"
+      >
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6">
+          <path d="M7 4a3 3 0 016 0v6a3 3 0 01-6 0V4zm-2 6a1 1 0 012 0 3 3 0 006 0 1 1 0 012 0 5 5 0 01-4 4.9V17h2a1 1 0 010 2H7a1 1 0 010-2h2v-2.1A5 5 0 015 10z" />
+        </svg>
+      </button>
+
       {detailCell && (() => {
         const detailMeal = grid[detailCell.type][detailCell.day];
         return detailMeal ? (
@@ -282,6 +328,17 @@ export default function Page() {
 
       {showGrocery && (
         <GroceryModal items={groceryList()} onClose={() => setShowGrocery(false)} />
+      )}
+
+      {showFoodLog && (
+        <FoodLogPanel
+          onClose={() => setShowFoodLog(false)}
+          entries={logEntries}
+          onAddEntry={addLogEntry}
+          totals={logTotals}
+          goals={logGoals}
+          onAddToMealPlan={handleAddToMealPlan}
+        />
       )}
     </div>
   );
