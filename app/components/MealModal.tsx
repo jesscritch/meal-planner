@@ -22,12 +22,14 @@ const TYPE_HEADING: Record<MealType, string> = {
   breakfast: "text-amber-700",
   lunch: "text-sky-700",
   dinner: "text-violet-700",
+  snack: "text-rose-600",
 };
 
 const SELECTED_RING: Record<MealType, string> = {
   breakfast: "ring-2 ring-amber-400 bg-amber-50",
   lunch: "ring-2 ring-sky-400 bg-sky-50",
   dinner: "ring-2 ring-violet-400 bg-violet-50",
+  snack: "ring-2 ring-rose-400 bg-rose-50",
 };
 
 export default function MealModal({

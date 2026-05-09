@@ -10,7 +10,12 @@ const ALLERGENS_KEY = "meal-planner-allergens";
 const EXTRA_INGREDIENTS_KEY = "meal-planner-extra-ingredients";
 
 function emptyGrid(): PlanGrid {
-  return { breakfast: Array(7).fill(null), lunch: Array(7).fill(null), dinner: Array(7).fill(null) };
+  return {
+    breakfast: Array(7).fill(null),
+    lunch: Array(7).fill(null),
+    dinner: Array(7).fill(null),
+    snack: Array(7).fill(null),
+  };
 }
 
 // Normalises an ingredient string to its base name for deduplication.
@@ -78,7 +83,11 @@ export function useMealPlan() {
   useEffect(() => {
     try {
       const storedGrid = localStorage.getItem(GRID_KEY);
-      if (storedGrid) setGrid(JSON.parse(storedGrid));
+      if (storedGrid) {
+        const parsed = JSON.parse(storedGrid);
+        if (!parsed.snack) parsed.snack = Array(7).fill(null);
+        setGrid(parsed);
+      }
       const storedAllergens = localStorage.getItem(ALLERGENS_KEY);
       if (storedAllergens) setActiveAllergens(new Set<Allergen>(JSON.parse(storedAllergens) as Allergen[]));
       const storedExtras = localStorage.getItem(EXTRA_INGREDIENTS_KEY);
@@ -122,6 +131,11 @@ export function useMealPlan() {
       setGrid((prev) => {
         const next: PlanGrid = emptyGrid();
         for (const type of MEAL_TYPES) {
+          if (MEALS_BY_TYPE[type].length === 0) {
+            // No library entries for this type (e.g. snack) — preserve existing
+            next[type] = [...prev[type]];
+            continue;
+          }
           for (let d = 0; d < 7; d++) {
             if (lockedSlots?.[type][d] && prev[type][d]) {
               next[type][d] = prev[type][d];
@@ -146,13 +160,14 @@ export function useMealPlan() {
   }, []);
 
   const stats = (() => {
+    const coreMealTypes = (["breakfast", "lunch", "dinner"] as const);
     let totalCal = 0, totalProt = 0, filled = 0;
-    for (const type of MEAL_TYPES) {
+    for (const type of coreMealTypes) {
       for (const meal of grid[type]) {
         if (meal) { totalCal += meal.calories; totalProt += meal.protein; filled++; }
       }
     }
-    const activeDays = MEAL_TYPES.reduce((acc, t) => {
+    const activeDays = coreMealTypes.reduce((acc, t) => {
       grid[t].forEach((m, i) => { if (m) acc.add(i); });
       return acc;
     }, new Set<number>()).size;

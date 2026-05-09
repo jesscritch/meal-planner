@@ -20,18 +20,21 @@ const TYPE_ACCENT: Record<MealType, string> = {
   breakfast: "bg-amber-50 border-amber-200 hover:border-amber-400",
   lunch: "bg-sky-50 border-sky-200 hover:border-sky-400",
   dinner: "bg-violet-50 border-violet-200 hover:border-violet-400",
+  snack: "bg-rose-50 border-rose-200 hover:border-rose-400",
 };
 
 const EMPTY_ACCENT: Record<MealType, string> = {
   breakfast: "border-amber-200 hover:border-amber-400 hover:bg-amber-50",
   lunch: "border-sky-200 hover:border-sky-400 hover:bg-sky-50",
   dinner: "border-violet-200 hover:border-violet-400 hover:bg-violet-50",
+  snack: "border-rose-200 hover:border-rose-400 hover:bg-rose-50",
 };
 
 const BADGE: Record<MealType, string> = {
   breakfast: "text-amber-700",
   lunch: "text-sky-700",
   dinner: "text-violet-700",
+  snack: "text-rose-600",
 };
 
 function LockIcon() {
@@ -81,7 +84,7 @@ export default function MealCell({
         className={`w-full h-full min-h-[80px] rounded-lg p-2 cursor-pointer transition-colors ${borderClass} ${bgClass} hover:brightness-[0.97]`}
       >
         {/* Top row: lock + allergen indicator */}
-        <div className="flex items-start justify-between mb-1">
+        <div className="flex items-start justify-between mb-0.5">
           <div className="flex items-center gap-1 min-w-0">
             {isLocked && (
               <span className="text-emerald-500 shrink-0" title="Locked">
@@ -101,6 +104,13 @@ export default function MealCell({
             </span>
           )}
         </div>
+
+        {/* Description */}
+        {meal.description && (
+          <p className="text-[10px] text-gray-400 leading-tight line-clamp-1 mb-0.5">
+            {meal.description}
+          </p>
+        )}
 
         {/* Stats */}
         <div className="flex gap-2 text-[11px]">

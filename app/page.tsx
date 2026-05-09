@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useMealPlan, pickReplacementMeal } from "@/app/hooks/useMealPlan";
 import { usePreferences } from "@/app/hooks/usePreferences";
@@ -58,6 +58,56 @@ export default function Page() {
     autoFill({ dislikedIds: dislikedMealIds, lockedSlots, avoidedFoods });
   }, [autoFill, dislikedMealIds, lockedSlots, avoidedFoods]);
 
+  // Adjusted stats: for each day use food log totals if available, else planned meals
+  const adjustedStats = useMemo(() => {
+    if (!hydrated) return { avgCalories: 0, avgProtein: 0 };
+    const todayIdx = todayDayIndex();
+    const coreMealTypes: MealType[] = ["breakfast", "lunch", "dinner"];
+    let totalCal = 0, totalProt = 0, dayCount = 0;
+
+    for (let i = 0; i < 7; i++) {
+      let dayCal = 0, dayProt = 0, hasData = false;
+
+      if (i === todayIdx && logEntries.length > 0) {
+        dayCal = logTotals.calories;
+        dayProt = logTotals.protein;
+        hasData = true;
+      } else {
+        try {
+          const d = new Date();
+          d.setDate(d.getDate() + (i - todayIdx));
+          const key = `food-log-${d.toISOString().slice(0, 10)}`;
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const dayEntries = JSON.parse(raw) as Array<{ calories: number; protein: number }>;
+            if (dayEntries.length) {
+              dayCal = dayEntries.reduce((s, e) => s + e.calories, 0);
+              dayProt = dayEntries.reduce((s, e) => s + e.protein, 0);
+              hasData = true;
+            }
+          }
+        } catch { /* localStorage unavailable */ }
+      }
+
+      if (!hasData) {
+        dayCal = coreMealTypes.reduce((s, t) => s + (grid[t][i]?.calories ?? 0), 0);
+        dayProt = coreMealTypes.reduce((s, t) => s + (grid[t][i]?.protein ?? 0), 0);
+        if (dayCal > 0 || dayProt > 0) hasData = true;
+      }
+
+      if (hasData) {
+        totalCal += dayCal;
+        totalProt += dayProt;
+        dayCount++;
+      }
+    }
+
+    return {
+      avgCalories: dayCount > 0 ? Math.round(totalCal / dayCount) : 0,
+      avgProtein: dayCount > 0 ? Math.round(totalProt / dayCount) : 0,
+    };
+  }, [hydrated, logEntries, logTotals, grid]);
+
   if (!hydrated) return null;
 
   const activeMeal = activeCell ? grid[activeCell.type][activeCell.day] : null;
@@ -110,7 +160,6 @@ export default function Page() {
 
   function handleAddToMealPlan(suggestion: MealSuggestion) {
     const day = todayDayIndex();
-    // Find the first empty slot today, preferring time-appropriate type
     const hour = new Date().getHours();
     const preferredOrder: MealType[] =
       hour < 12 ? ["breakfast", "lunch", "dinner"]
@@ -118,7 +167,7 @@ export default function Page() {
       : ["dinner", "lunch", "breakfast"];
 
     const targetType = preferredOrder.find((t) => !grid[t][day]) ?? null;
-    if (!targetType) return; // all slots taken today
+    if (!targetType) return;
 
     const syntheticMeal: Meal = {
       id: `suggested-${Date.now()}`,
@@ -126,6 +175,7 @@ export default function Page() {
       type: targetType,
       calories: suggestion.calories,
       protein: suggestion.protein,
+      description: suggestion.reason,
       ingredients: [],
       keywords: [],
       allergens: [],
@@ -133,9 +183,37 @@ export default function Page() {
     setMeal(targetType, day, syntheticMeal);
   }
 
+  function handleAddLoggedMealToPlanner(
+    name: string, description: string, calories: number, protein: number,
+    mealType: "breakfast" | "lunch" | "dinner" | "snack",
+  ) {
+    const day = todayDayIndex();
+    const syntheticMeal: Meal = {
+      id: `logged-${Date.now()}`,
+      name,
+      type: mealType,
+      calories,
+      protein,
+      description,
+      ingredients: [],
+      keywords: [],
+      allergens: [],
+    };
+    setMeal(mealType, day, syntheticMeal);
+  }
+
   function renderCell(type: MealType, day: number) {
     const meal = grid[type][day];
     const key = cellKey(type, day);
+    const handleClick = () => {
+      if (meal) {
+        setDetailCell({ day, type });
+      } else if (type === "snack") {
+        setShowFoodLog(true);
+      } else {
+        setActiveCell({ day, type });
+      }
+    };
     return (
       <MealCell
         key={key}
@@ -148,7 +226,7 @@ export default function Page() {
         fading={fadingCells.has(key)}
         onThumbsUp={() => meal && handleThumbsUp(type, day, meal)}
         onThumbsDown={() => meal && handleThumbsDown(type, day, meal)}
-        onClick={() => meal ? setDetailCell({ day, type }) : setActiveCell({ day, type })}
+        onClick={handleClick}
       />
     );
   }
@@ -216,7 +294,7 @@ export default function Page() {
 
         {/* Stats */}
         <div className="mb-3">
-          <StatsBar avgCalories={stats.avgCalories} avgProtein={stats.avgProtein} filled={stats.filled} />
+          <StatsBar avgCalories={adjustedStats.avgCalories} avgProtein={adjustedStats.avgProtein} filled={stats.filled} />
         </div>
 
         {/* Allergy filter */}
@@ -358,6 +436,7 @@ export default function Page() {
           totals={logTotals}
           goals={logGoals}
           onAddToMealPlan={handleAddToMealPlan}
+          onAddLoggedMealToPlanner={handleAddLoggedMealToPlanner}
         />
       )}
     </div>

@@ -1,4 +1,4 @@
-export type MealType = "breakfast" | "lunch" | "dinner";
+export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 export type Allergen = "gluten" | "dairy" | "eggs" | "fish" | "shellfish" | "nuts" | "soy";
 
 export const ALLERGEN_LABELS: Record<Allergen, string> = {
@@ -19,6 +19,7 @@ export interface Meal {
   type: MealType;
   calories: number;
   protein: number;
+  description?: string;
   ingredients: string[];
   keywords: string[];
   allergens: Allergen[];
@@ -32,6 +33,7 @@ export const MEALS: Meal[] = [
     type: "breakfast",
     calories: 290,
     protein: 28,
+    description: "High protein, probiotic-rich start",
     ingredients: ["Greek yogurt (2% fat, 200g)", "Mixed berries (100g)", "Honey (1 tsp)", "Granola (20g)"],
     keywords: ["greek yogurt", "yogurt", "berries", "honey", "granola"],
     allergens: ["dairy", "gluten"],
@@ -42,6 +44,7 @@ export const MEALS: Meal[] = [
     type: "breakfast",
     calories: 305,
     protein: 32,
+    description: "Low-carb, high protein, vegetable-packed",
     ingredients: ["Egg whites (5 large)", "Spinach (30g)", "Cherry tomatoes (50g)", "Feta cheese (20g)", "Olive oil (1 tsp)"],
     keywords: ["eggs", "egg whites", "spinach", "tomatoes", "feta", "olive oil"],
     allergens: ["eggs", "dairy"],
@@ -52,6 +55,7 @@ export const MEALS: Meal[] = [
     type: "breakfast",
     calories: 310,
     protein: 30,
+    description: "Fluffy, high protein, lower fat",
     ingredients: ["Cottage cheese (150g)", "Eggs (2 large)", "Oat flour (40g)", "Baking powder (1/2 tsp)", "Banana (1/2)"],
     keywords: ["cottage cheese", "eggs", "oats", "oat flour", "banana"],
     allergens: ["dairy", "eggs", "gluten"],
@@ -62,6 +66,7 @@ export const MEALS: Meal[] = [
     type: "breakfast",
     calories: 295,
     protein: 29,
+    description: "Prep-ahead, sustained energy release",
     ingredients: ["Rolled oats (60g)", "Protein powder, vanilla (1 scoop)", "Almond milk (150ml)", "Chia seeds (1 tbsp)", "Peanut butter (1 tbsp)"],
     keywords: ["oats", "protein powder", "almond milk", "chia seeds", "peanut butter", "almonds"],
     allergens: ["gluten", "nuts"],
@@ -72,6 +77,7 @@ export const MEALS: Meal[] = [
     type: "breakfast",
     calories: 300,
     protein: 34,
+    description: "Lean protein, quick and filling",
     ingredients: ["Lean turkey mince (100g)", "Eggs (2 large)", "Bell pepper (1/2)", "Onion (1/4)", "Olive oil (1 tsp)"],
     keywords: ["turkey", "eggs", "bell pepper", "onion", "olive oil"],
     allergens: ["eggs"],
@@ -82,6 +88,7 @@ export const MEALS: Meal[] = [
     type: "breakfast",
     calories: 315,
     protein: 28,
+    description: "Rich in omega-3s, satisfying and fresh",
     ingredients: ["Smoked salmon (80g)", "Whole wheat bagel (1 small)", "Low-fat cream cheese (30g)", "Capers (1 tbsp)", "Red onion (sliced)"],
     keywords: ["salmon", "smoked salmon", "bagel", "cream cheese", "capers", "red onion"],
     allergens: ["fish", "gluten", "dairy"],
@@ -94,6 +101,7 @@ export const MEALS: Meal[] = [
     type: "lunch",
     calories: 420,
     protein: 46,
+    description: "Classic high protein, lighter on carbs",
     ingredients: ["Chicken breast (150g)", "Romaine lettuce (80g)", "Parmesan (20g)", "Light Caesar dressing (2 tbsp)", "Whole wheat croutons (20g)"],
     keywords: ["chicken", "lettuce", "parmesan", "caesar dressing", "croutons"],
     allergens: ["dairy", "gluten"],
@@ -104,6 +112,7 @@ export const MEALS: Meal[] = [
     type: "lunch",
     calories: 415,
     protein: 45,
+    description: "High protein, fibre-rich, dairy-free",
     ingredients: ["Canned tuna in water (150g)", "White beans (100g)", "Cherry tomatoes (80g)", "Cucumber (60g)", "Olive oil (1 tbsp)", "Lemon juice"],
     keywords: ["tuna", "white beans", "tomatoes", "cucumber", "olive oil", "lemon"],
     allergens: ["fish"],
@@ -114,6 +123,7 @@ export const MEALS: Meal[] = [
     type: "lunch",
     calories: 425,
     protein: 44,
+    description: "Complete protein, naturally gluten-free",
     ingredients: ["Lean turkey breast (130g)", "Cooked quinoa (80g)", "Roasted zucchini (80g)", "Feta cheese (20g)", "Tzatziki (2 tbsp)"],
     keywords: ["turkey", "quinoa", "zucchini", "feta", "tzatziki"],
     allergens: ["dairy"],
@@ -124,6 +134,7 @@ export const MEALS: Meal[] = [
     type: "lunch",
     calories: 410,
     protein: 47,
+    description: "High protein, low fat, Asian-inspired",
     ingredients: ["Shrimp, peeled (180g)", "Brown rice (70g)", "Broccoli (100g)", "Snap peas (60g)", "Soy sauce (1 tbsp)", "Sesame oil (1 tsp)", "Garlic"],
     keywords: ["shrimp", "rice", "broccoli", "snap peas", "soy sauce", "garlic"],
     allergens: ["shellfish", "soy"],
@@ -134,6 +145,7 @@ export const MEALS: Meal[] = [
     type: "lunch",
     calories: 430,
     protein: 43,
+    description: "Balanced macros, portable and satisfying",
     ingredients: ["Lean beef strips (130g)", "Whole wheat tortilla (1 large)", "Mixed greens (30g)", "Avocado (1/4)", "Greek yogurt (2 tbsp)", "Salsa (2 tbsp)"],
     keywords: ["beef", "red meat", "tortilla", "avocado", "greek yogurt", "yogurt", "salsa"],
     allergens: ["gluten", "dairy"],
@@ -144,6 +156,7 @@ export const MEALS: Meal[] = [
     type: "lunch",
     calories: 405,
     protein: 45,
+    description: "High protein, gut-friendly, warming",
     ingredients: ["Chicken breast (120g)", "Red lentils (60g)", "Diced tomatoes (100g)", "Spinach (30g)", "Chicken broth (300ml)", "Cumin", "Garlic"],
     keywords: ["chicken", "lentils", "tomatoes", "spinach", "garlic", "cumin"],
     allergens: [],
@@ -156,6 +169,7 @@ export const MEALS: Meal[] = [
     type: "dinner",
     calories: 390,
     protein: 48,
+    description: "Rich omega-3s, light and clean",
     ingredients: ["Salmon fillet (180g)", "Asparagus (120g)", "Lemon (1/2)", "Olive oil (1 tbsp)", "Garlic (2 cloves)", "Dill"],
     keywords: ["salmon", "asparagus", "lemon", "olive oil", "garlic", "dill"],
     allergens: ["fish"],
@@ -166,6 +180,7 @@ export const MEALS: Meal[] = [
     type: "dinner",
     calories: 405,
     protein: 47,
+    description: "Balanced, slow-release carbs",
     ingredients: ["Chicken breast (170g)", "Sweet potato (150g)", "Green beans (100g)", "Olive oil (1 tbsp)", "Paprika", "Rosemary"],
     keywords: ["chicken", "sweet potato", "green beans", "olive oil", "paprika"],
     allergens: [],
@@ -176,6 +191,7 @@ export const MEALS: Meal[] = [
     type: "dinner",
     calories: 400,
     protein: 49,
+    description: "Iron-rich, high protein, Asian-style",
     ingredients: ["Lean beef sirloin (160g)", "Brown rice (60g)", "Mixed peppers (100g)", "Mushrooms (80g)", "Oyster sauce (1 tbsp)", "Sesame oil (1 tsp)"],
     keywords: ["beef", "red meat", "rice", "peppers", "bell peppers", "mushrooms"],
     allergens: ["soy"],
@@ -186,6 +202,7 @@ export const MEALS: Meal[] = [
     type: "dinner",
     calories: 370,
     protein: 50,
+    description: "Very lean, highest protein, low fat",
     ingredients: ["Cod fillet (200g)", "Broccoli florets (150g)", "Cherry tomatoes (80g)", "Olive oil (1 tbsp)", "Lemon", "Garlic", "Herbs"],
     keywords: ["cod", "fish", "broccoli", "tomatoes", "olive oil", "lemon", "garlic"],
     allergens: ["fish"],
@@ -196,6 +213,7 @@ export const MEALS: Meal[] = [
     type: "dinner",
     calories: 410,
     protein: 46,
+    description: "Low-carb Italian-inspired comfort meal",
     ingredients: ["Turkey mince (180g)", "Zucchini noodles (150g)", "Marinara sauce (80g)", "Parmesan (15g)", "Garlic", "Italian herbs"],
     keywords: ["turkey", "zucchini", "marinara", "parmesan", "garlic"],
     allergens: ["dairy"],
@@ -206,6 +224,7 @@ export const MEALS: Meal[] = [
     type: "dinner",
     calories: 395,
     protein: 48,
+    description: "High protein, anti-inflammatory spices",
     ingredients: ["Prawns (180g)", "Chickpeas (80g)", "Coconut milk, light (80ml)", "Diced tomatoes (100g)", "Spinach (40g)", "Curry powder", "Ginger", "Garlic"],
     keywords: ["prawns", "shrimp", "chickpeas", "coconut milk", "spinach", "curry", "ginger", "garlic"],
     allergens: ["shellfish"],
@@ -216,6 +235,7 @@ export const MEALS_BY_TYPE: Record<MealType, Meal[]> = {
   breakfast: MEALS.filter((m) => m.type === "breakfast"),
   lunch: MEALS.filter((m) => m.type === "lunch"),
   dinner: MEALS.filter((m) => m.type === "dinner"),
+  snack: [],
 };
 
 export function foodMatchesMeal(meal: Meal, foods: string[]): boolean {

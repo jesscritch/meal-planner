@@ -10,7 +10,12 @@ const LOCKED_KEY = "meal-planner-locked-slots";
 export type LockedSlots = Record<MealType, boolean[]>;
 
 function emptyLocked(): LockedSlots {
-  return { breakfast: Array(7).fill(false), lunch: Array(7).fill(false), dinner: Array(7).fill(false) };
+  return {
+    breakfast: Array(7).fill(false),
+    lunch: Array(7).fill(false),
+    dinner: Array(7).fill(false),
+    snack: Array(7).fill(false),
+  };
 }
 
 export function useRatings() {
@@ -26,7 +31,11 @@ export function useRatings() {
       const disliked = localStorage.getItem(DISLIKED_KEY);
       if (disliked) setDislikedMealIds(new Set<string>(JSON.parse(disliked)));
       const locked = localStorage.getItem(LOCKED_KEY);
-      if (locked) setLockedSlots(JSON.parse(locked));
+      if (locked) {
+        const parsed = JSON.parse(locked);
+        if (!parsed.snack) parsed.snack = Array(7).fill(false);
+        setLockedSlots(parsed);
+      }
     } catch {}
     setHydrated(true);
   }, []);

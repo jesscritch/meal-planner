@@ -17,12 +17,14 @@ interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
-  rawContent: string; // sent to Claude — full JSON for assistant, plain text for user
+  rawContent: string;
   macros?: MacroResult;
   logged?: boolean;
   suggestions?: SuggestionsResult;
   addedSuggestionIdx?: number;
 }
+
+type LogMealType = "breakfast" | "lunch" | "dinner" | "snack";
 
 interface Props {
   onClose: () => void;
@@ -31,6 +33,7 @@ interface Props {
   totals: { calories: number; protein: number; carbs: number; fat: number };
   goals: { calories: number; protein: number };
   onAddToMealPlan: (suggestion: MealSuggestion) => void;
+  onAddLoggedMealToPlanner: (name: string, description: string, calories: number, protein: number, mealType: LogMealType) => void;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -39,6 +42,14 @@ function timeOfDay() {
   if (h < 12) return "morning";
   if (h < 17) return "afternoon";
   return "evening";
+}
+
+function defaultMealType(): LogMealType {
+  const h = new Date().getHours();
+  if (h < 10) return "breakfast";
+  if (h < 14) return "lunch";
+  if (h < 17) return "snack";
+  return "dinner";
 }
 
 let msgSeq = 0;
@@ -51,6 +62,13 @@ const GREETING: ChatMessage = {
   role: "assistant",
   content: "Hi! Tell me what you've eaten and I'll estimate your macros. You can describe one meal or your whole day.",
   rawContent: '{"message":"Hi! Tell me what you\'ve eaten and I\'ll estimate your macros. You can describe one meal or your whole day."}',
+};
+
+const MEAL_TYPE_LABELS: Record<LogMealType, string> = {
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  dinner: "Dinner",
+  snack: "Snack",
 };
 
 // ── Sub-components ────────────────────────────────────────────────────
@@ -89,9 +107,10 @@ function MacroCard({ macros }: { macros: MacroResult }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────
-export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goals, onAddToMealPlan }: Props) {
-  // ── Tab ──
+export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goals, onAddToMealPlan, onAddLoggedMealToPlanner }: Props) {
+  // ── Shared state ──
   const [tab, setTab] = useState<"voice" | "chat">("voice");
+  const [selectedMealType, setSelectedMealType] = useState<LogMealType>(defaultMealType);
 
   // ── Voice state ──
   const [voiceSupported, setVoiceSupported] = useState(true);
@@ -99,6 +118,7 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
   const [transcript, setTranscript] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [macroResult, setMacroResult] = useState<MacroResult | null>(null);
+  const [voiceLogged, setVoiceLogged] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestionsResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [addedIndex, setAddedIndex] = useState<number | null>(null);
@@ -120,7 +140,7 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
     return () => { recognitionRef.current?.stop(); };
   }, []);
 
-  // Auto-scroll chat on new messages
+  // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages, chatLoading]);
@@ -171,6 +191,7 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
       setSuggestions(null);
       setError(null);
       setAddedIndex(null);
+      setVoiceLogged(false);
       startRecording();
     }
   }
@@ -189,31 +210,42 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
       const macro: MacroResult = await macroRes.json();
       if (!macro.calories && macro.calories !== 0) throw new Error("parse");
       setMacroResult(macro);
-      onAddEntry({
-        id: `${Date.now()}`,
-        timestamp: Date.now(),
-        transcript,
-        summary: macro.summary,
-        calories: macro.calories,
-        protein: macro.protein,
-        carbs: macro.carbs,
-        fat: macro.fat,
-        notes: macro.notes,
-      });
+    } catch {
+      setError("Couldn't estimate macros for that — try describing it in more detail");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleVoiceLog() {
+    if (!macroResult) return;
+    const entry: FoodLogEntry = {
+      id: `${Date.now()}`,
+      timestamp: Date.now(),
+      transcript,
+      summary: macroResult.summary,
+      calories: macroResult.calories,
+      protein: macroResult.protein,
+      carbs: macroResult.carbs,
+      fat: macroResult.fat,
+      notes: macroResult.notes,
+    };
+    onAddEntry(entry);
+    onAddLoggedMealToPlanner(macroResult.summary, macroResult.notes, macroResult.calories, macroResult.protein, selectedMealType);
+    setVoiceLogged(true);
+    try {
       const suggestRes = await fetch("/api/suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          caloriesConsumed: totals.calories + macro.calories,
-          proteinConsumed: totals.protein + macro.protein,
+          caloriesConsumed: totals.calories + macroResult.calories,
+          proteinConsumed: totals.protein + macroResult.protein,
           timeOfDay: timeOfDay(),
         }),
       });
       if (suggestRes.ok) setSuggestions(await suggestRes.json());
     } catch {
-      setError("Couldn't estimate macros for that — try describing it in more detail");
-    } finally {
-      setSubmitting(false);
+      // suggestions are non-critical
     }
   }
 
@@ -223,6 +255,7 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
     setSuggestions(null);
     setError(null);
     setAddedIndex(null);
+    setVoiceLogged(false);
   }
 
   // ── Chat handlers ──────────────────────────────────────────────────
@@ -237,7 +270,6 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
     setChatLoading(true);
 
     try {
-      // Build API history: skip greeting, send raw content so Claude has full context
       const apiMessages = nextMessages
         .filter((m) => m.id !== "greeting")
         .map((m) => ({ role: m.role, content: m.rawContent }));
@@ -281,7 +313,7 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
     const msgIndex = chatMessages.findIndex((m) => m.id === msgId);
     const precedingUser = chatMessages.slice(0, msgIndex).reverse().find((m) => m.role === "user");
 
-    onAddEntry({
+    const entry: FoodLogEntry = {
       id: `${Date.now()}`,
       timestamp: Date.now(),
       transcript: precedingUser?.content ?? msg.macros.summary,
@@ -291,12 +323,12 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
       carbs: msg.macros.carbs,
       fat: msg.macros.fat,
       notes: msg.macros.notes,
-    });
+    };
+    onAddEntry(entry);
+    onAddLoggedMealToPlanner(msg.macros.summary, msg.macros.notes, msg.macros.calories, msg.macros.protein, selectedMealType);
 
-    // Mark as logged
     setChatMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, logged: true } : m));
 
-    // Fetch suggestions and append as a follow-up assistant message
     try {
       const suggestRes = await fetch("/api/suggestions", {
         method: "POST",
@@ -321,7 +353,7 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
         ]);
       }
     } catch {
-      // suggestions are non-critical, silently skip
+      // suggestions are non-critical
     }
   }
 
@@ -349,7 +381,7 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
           </button>
         </div>
 
-        {/* Progress bars — pinned, always visible */}
+        {/* Progress bars */}
         <div className="px-5 pt-4 pb-3 border-b border-gray-100 shrink-0 space-y-2.5">
           <div className="space-y-1.5">
             <div className="flex justify-between text-sm">
@@ -371,6 +403,26 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
               <span>{Math.max(0, goals.protein - totals.protein)}g protein remaining</span>
             </div>
           )}
+        </div>
+
+        {/* Meal type selector */}
+        <div className="px-5 pt-3 pb-3 border-b border-gray-100 shrink-0">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Log as</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {(["breakfast", "lunch", "dinner", "snack"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setSelectedMealType(t)}
+                className={`py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  selectedMealType === t
+                    ? "bg-gray-900 text-white"
+                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                }`}
+              >
+                {MEAL_TYPE_LABELS[t]}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Tabs */}
@@ -487,6 +539,18 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
                     <p className="text-xs text-gray-500 border-t border-gray-200 pt-3 leading-relaxed">{macroResult.notes}</p>
                   )}
                 </div>
+                {voiceLogged ? (
+                  <p className="text-center text-sm text-emerald-500 font-medium">
+                    Logged as {MEAL_TYPE_LABELS[selectedMealType]} ✓
+                  </p>
+                ) : (
+                  <button
+                    onClick={handleVoiceLog}
+                    className="w-full py-2.5 text-sm font-medium text-white bg-gray-900 rounded-xl hover:bg-gray-700 transition-colors"
+                  >
+                    Log as {MEAL_TYPE_LABELS[selectedMealType]}
+                  </button>
+                )}
                 <button onClick={handleVoiceReset} className="w-full py-2 text-sm text-gray-400 hover:text-gray-700 transition-colors">
                   + Log another meal
                 </button>
@@ -540,7 +604,6 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
         {/* ── Chat tab ──────────────────────────────────────────────── */}
         {tab === "chat" && (
           <div className="flex flex-col flex-1 min-h-0">
-            {/* Messages */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
               {chatMessages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -555,19 +618,20 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
                         {msg.macros && <MacroCard macros={msg.macros} />}
                         {msg.macros && (
                           msg.logged ? (
-                            <p className="mt-2 text-center text-xs text-emerald-500 font-medium">Logged ✓</p>
+                            <p className="mt-2 text-center text-xs text-emerald-500 font-medium">
+                              Logged as {MEAL_TYPE_LABELS[selectedMealType]} ✓
+                            </p>
                           ) : (
                             <button
                               onClick={() => handleChatLog(msg.id)}
                               className="mt-2 w-full py-1.5 text-xs font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-700 transition-colors"
                             >
-                              Log this
+                              Log as {MEAL_TYPE_LABELS[selectedMealType]}
                             </button>
                           )
                         )}
                       </div>
 
-                      {/* Suggestions attached to this message */}
                       {msg.suggestions && msg.suggestions.suggestions.length > 0 && (
                         <div className="space-y-1.5 pl-1">
                           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-1">
@@ -618,7 +682,6 @@ export default function FoodLogPanel({ onClose, entries, onAddEntry, totals, goa
               <div ref={chatEndRef} />
             </div>
 
-            {/* Input */}
             <div className="shrink-0 px-4 pb-4 pt-2 border-t border-gray-100">
               <div className="flex gap-2 items-center">
                 <input

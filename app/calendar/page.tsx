@@ -58,6 +58,30 @@ function ringColor(calories: number): string {
   return "#f59e0b";                            // amber
 }
 
+type DayBg = "green" | "yellow" | "red" | "none";
+
+function dayBg(totals: DayTotals | null): DayBg {
+  if (!totals || totals.entries.length === 0) return "none";
+  const { calories: cal, protein: prot } = totals;
+  // Green: both within 10% of goal
+  const calIn10 = cal >= 1350 && cal <= 1650;
+  const protIn10 = prot >= 153; // 90% of 170g
+  if (calIn10 && protIn10) return "green";
+  // Red: calories exceeded by >15% OR both significantly off (outside 20%)
+  const calOver15 = cal > 1725;
+  const calIn20 = cal >= 1200 && cal <= 1800;
+  const protIn20 = prot >= 136; // 80% of 170g
+  if (calOver15 || (!calIn20 && !protIn20)) return "red";
+  return "yellow";
+}
+
+const DAY_BG_CLASS: Record<DayBg, string> = {
+  green: "bg-emerald-50",
+  yellow: "bg-amber-50",
+  red: "bg-red-50",
+  none: "",
+};
+
 function loadAllLogs(): Record<string, DayTotals> {
   const result: Record<string, DayTotals> = {};
   try {
@@ -143,15 +167,15 @@ function DayCell({
   const pct = hasData ? totals!.calories / GOALS.calories : 0;
   const color = hasData ? ringColor(totals!.calories) : "#e5e7eb";
   const goalMet = hasData && isGoalMet(totals!);
+  const bg = selected ? "bg-gray-100/60" : isFuture ? "bg-gray-50/40" : DAY_BG_CLASS[dayBg(totals)];
 
   return (
     <div
       onClick={() => hasData && !isFuture && onClick()}
       className={[
         "h-full p-1.5 sm:p-2 flex flex-col transition-colors",
-        selected ? "bg-gray-100/60" : "",
-        !isFuture && hasData ? "cursor-pointer hover:bg-gray-50" : "cursor-default",
-        isFuture ? "bg-gray-50/60" : "",
+        bg,
+        !isFuture && hasData ? "cursor-pointer hover:brightness-[0.97]" : "cursor-default",
       ].join(" ")}
     >
       {/* Day number row */}
@@ -461,16 +485,16 @@ export default function CalendarPage() {
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-gray-400 px-1">
           <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            <span>On track (±100 kcal)</span>
+            <div className="w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-300" />
+            <span>Both goals within 10%</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-            <span>Under goal</span>
+            <div className="w-3 h-3 rounded-sm bg-amber-100 border border-amber-300" />
+            <span>Partially on track</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
-            <span>Over goal</span>
+            <div className="w-3 h-3 rounded-sm bg-red-100 border border-red-300" />
+            <span>Off goal or over budget</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-emerald-500 font-bold text-sm">✓</span>
